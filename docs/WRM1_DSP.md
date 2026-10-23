@@ -39,16 +39,26 @@ Bypass uses the host's bypass (JUCE `getBypassParameter`), not a custom paramete
 Per channel, identical settings on both channels (stereo-linked: no cross-channel interaction,
 so a future Mid/Side mode is just an M/S encode before and decode after this chain).
 
-```
-x ─┬──────────────────────────────────────────────────────── (dry, delayed by OS latency) ──┐
-   │                                                                                         │
-   └─ Low Protect pre-shelf ─ [Tape HF pre-emphasis] ─ ↑OS ─ ×g ─ curve ─ ÷g ─ ↓OS           │
-        ─ DC blocker ─ [Tape HF de-emphasis] ─ Low Protect inverse shelf                     │
-        ─ HF rolloff ─ Tone tilt ─ Body bell ─ × AutoGain ──────────────── wet ──── mix ─────┴─ × Output ─ y
+```mermaid
+flowchart LR
+    X(["in"]) --> LP1["Low Protect pre-shelf"]
+    X --> DLY["Dry delay<br/>= OS latency"]
+    LP1 --> EM1["Tape only:<br/>HF pre-emphasis"]
+    subgraph OS["Oversampled section (1x / 2x / 4x)"]
+        direction LR
+        UP["Upsample"] --> DRV["× g<br/>(Warmth + Input)"] --> CRV["Character curve"] --> UNDRV["÷ g"] --> DN["Downsample"]
+    end
+    EM1 --> UP
+    DN --> DC["DC blocker"] --> EM2["Tape only:<br/>HF de-emphasis"] --> LP2["Low Protect<br/>inverse shelf"]
+    LP2 --> HF["HF rolloff"] --> TONE["Tone tilt"] --> BODY["Body bell"] --> AG["× Auto Gain"]
+    AG -- wet --> MIX{{"Mix"}}
+    DLY -- dry --> MIX
+    MIX --> OUT["× Output"] --> Y(["out"])
 ```
 
 `out = (1 - mix) · dry + mix · wet`, then `× db2lin(output)`.
-Only the section between ↑OS and ↓OS runs at the oversampled rate; all filters run at the host rate.
+Only the oversampled section runs at the higher rate; all filters run at the host rate.
+Input trim has no gain stage of its own: it adds to `drive_dB` (2.1).
 
 ### 2.1 Drive
 

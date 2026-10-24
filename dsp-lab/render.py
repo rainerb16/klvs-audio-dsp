@@ -105,7 +105,8 @@ def main():
 
     if args.blind:
         bdir = out / "blind"
-        bdir.mkdir(exist_ok=True)
+        shutil.rmtree(bdir, ignore_errors=True)  # no stale files from an earlier run
+        bdir.mkdir()
         files = sorted(f for f in out.glob("*.wav"))
         random.shuffle(files)
         key = []

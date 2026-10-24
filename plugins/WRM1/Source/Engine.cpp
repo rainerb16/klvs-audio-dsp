@@ -86,7 +86,7 @@ void Engine::prepare (double newSampleRate, int maximumBlockSize, int numChannel
         oversamplers[(size_t) i]->initProcessing ((size_t) maxBlock);
     }
 
-    dryDelay.setMaximumDelayInSamples (1024);
+    dryDelay.setMaximumDelayInSamples (maxDryDelay);
     dryDelay.prepare ({ sampleRate, (juce::uint32) maxBlock, (juce::uint32) numCh });
 
     for (int i = 0; i < 3; ++i)
@@ -102,9 +102,22 @@ void Engine::prepare (double newSampleRate, int maximumBlockSize, int numChannel
     for (auto* f : { &preLowProtect, &preEmphasis, &postEmphasis, &postLowProtect, &hfRolloff, &toneLow, &toneHigh, &bodyBell })
         f->reset();
 
+    prepared = true;
     osIndex = -1; // force updateLatency() on the next setSettings()
     setSettings (target);
     snapToTargets();
+}
+
+void Engine::resetState() noexcept
+{
+    for (auto* f : { &preLowProtect, &preEmphasis, &postEmphasis, &postLowProtect, &hfRolloff, &toneLow, &toneHigh, &bodyBell })
+        f->reset();
+    dcBlocker.reset();
+    if (osIndex > 0)
+        oversamplers[(size_t) osIndex]->reset();
+    padBuffer = {};
+    padPos = 0;
+    dryDelay.reset();
 }
 
 void Engine::updateLatency() noexcept
@@ -125,19 +138,29 @@ void Engine::updateLatency() noexcept
         latency = (int) std::ceil (raw - 1e-6);
         latencyPad = (int) std::lround ((latency - raw) * factor);
         jassert (std::abs ((latency - raw) * factor - latencyPad) < 1e-6); // padding must be exact
-        oversamplers[(size_t) osIndex]->reset();
+        jassert (latencyPad < (int) padBuffer[0].size() && latency <= maxDryDelay);
     }
-    padBuffer = {};
-    padPos = 0;
-    dryDelay.reset();
+    resetState();
     dryDelay.setDelay ((float) latency);
 }
 
-void Engine::setSettings (const Settings& s) noexcept
+void Engine::setSettings (const Settings& in) noexcept
 {
+    // Never let a non-finite value into the smoothers (the parameters are range-checked already).
+    const Settings defaults;
+    Settings s = in;
+    for (auto [v, d] : { std::pair { &s.inputDb, defaults.inputDb }, { &s.warmth, defaults.warmth }, { &s.tone, defaults.tone },
+                         { &s.body, defaults.body }, { &s.lowProtect, defaults.lowProtect }, { &s.mix, defaults.mix },
+                         { &s.outputDb, defaults.outputDb } })
+        if (! std::isfinite (*v))
+            *v = d;
+
     target = s;
-    const int ch = std::clamp (s.character, 0, 2);
-    const auto& spec = characters[ch];
+    requestedCharacter = std::clamp (s.character, 0, 2);
+    if (! prepared)
+        return;
+
+    const auto& spec = characters[requestedCharacter];
     const auto drive = (float) driveDbFor (s.warmth, s.inputDb);
 
     if (const int os = std::clamp (s.oversampling, 0, 2); os != osIndex)
@@ -157,10 +180,15 @@ void Engine::setSettings (const Settings& s) noexcept
     mixSm.setTargetValue (s.mix);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (s.outputDb, -1000.0f));
 
-    if (ch != character)
+    startPendingCharacterFade();
+}
+
+void Engine::startPendingCharacterFade() noexcept
+{
+    if (requestedCharacter != character && fadeRemaining == 0)
     {
         previousCharacter = character;
-        character = ch;
+        character = requestedCharacter;
         fadeRemaining = fadeLength;
     }
 }
@@ -169,7 +197,7 @@ void Engine::snapToTargets() noexcept
 {
     for (auto* s : { &driveDb, &driveDbHost, &lowProtectDb, &emphasisDb, &hfDb, &toneDb, &bodyDb, &mixSm, &outputGain })
         s->setCurrentAndTargetValue (s->getTargetValue());
-    previousCharacter = character;
+    character = previousCharacter = requestedCharacter;
     fadeRemaining = 0;
     const SubBlock now { lowProtectDb.getTargetValue(), emphasisDb.getTargetValue(), hfDb.getTargetValue(),
                          toneDb.getTargetValue(), bodyDb.getTargetValue() };
@@ -188,6 +216,8 @@ float Engine::autoGainTarget (const SubBlock& sb) const noexcept
 
 void Engine::process (juce::AudioBuffer<float>& buffer) noexcept
 {
+    if (! prepared)
+        return;
     const int channels = std::min ({ buffer.getNumChannels(), numCh, maxChannels });
     std::array<float*, maxChannels> ptrs {};
     for (int start = 0; start < buffer.getNumSamples(); start += maxBlock)
@@ -196,6 +226,22 @@ void Engine::process (juce::AudioBuffer<float>& buffer) noexcept
         for (int c = 0; c < channels; ++c)
             ptrs[(size_t) c] = buffer.getWritePointer (c, start);
         processChunk (ptrs.data(), channels, n);
+    }
+}
+
+void Engine::processBypassed (juce::AudioBuffer<float>& buffer) noexcept
+{
+    if (! prepared || latency == 0)
+        return;
+    const int channels = std::min ({ buffer.getNumChannels(), numCh, maxChannels });
+    for (int c = 0; c < channels; ++c)
+    {
+        auto* x = buffer.getWritePointer (c);
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+        {
+            dryDelay.pushSample (c, x[i]);
+            x[i] = dryDelay.popSample (c);
+        }
     }
 }
 
@@ -241,6 +287,8 @@ void Engine::saturate (juce::dsp::AudioBlock<float>& block) noexcept
 
 void Engine::processChunk (float* const* io, int channels, int n) noexcept
 {
+    startPendingCharacterFade();
+
     for (int c = 0; c < channels; ++c)
     {
         wet.copyFrom (c, 0, io[c], n);
@@ -347,6 +395,18 @@ void Engine::processChunk (float* const* io, int channels, int n) noexcept
             }
             io[c][i] = ((1.0f - m) * d + m * wet.getSample (c, i)) * og;
         }
+    }
+
+    // A NaN/Inf from upstream would otherwise live forever in the filter states and silence the
+    // bus. The last sample of each channel carries any such value, so checking it is enough.
+    bool finite = true;
+    for (int c = 0; c < channels; ++c)
+        finite = finite && std::isfinite (io[c][n - 1]);
+    if (! finite)
+    {
+        resetState();
+        for (int c = 0; c < channels; ++c)
+            juce::FloatVectorOperations::clear (io[c], n);
     }
 }
 } // namespace wrm1

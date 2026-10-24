@@ -22,6 +22,8 @@ def main():
     step = grid[1] - grid[0]
     assert all(b - a == step for a, b in zip(grid, grid[1:])), "drive grid must be uniform"
     assert t["low_protect_grid"] == [0.0, 0.5, 1.0]
+    # Engine.cpp hard-codes drive = min + (max - min) * warmth: keep the taper linear or update it.
+    assert wrm1.WARMTH_TAPER == 1.0, "Engine.cpp assumes a linear Warmth taper"
     names = list(wrm1.CHARACTERS)  # order = Character parameter index
     assert names == ["tape", "tube", "console"]
 

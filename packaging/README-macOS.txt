@@ -24,5 +24,8 @@ This build isn't signed by Apple yet. Install it like this:
 2. In Ableton Live: Settings > Plug-Ins > turn on "Use VST3 Plug-in System Folders" > Rescan.
    Find it under Plug-Ins > Rainr Audio > {PLUGIN}. Use the VST3 version.
 
+Updating: quit Live and delete the old {PLUGIN}.vst3 and {PLUGIN}.component from those two folders
+first, then install as above.
+
 Full instructions and troubleshooting:
 https://github.com/rainerb16/rainr-audio-dsp/blob/main/docs/INSTALL.md

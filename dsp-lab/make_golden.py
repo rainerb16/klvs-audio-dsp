@@ -30,6 +30,7 @@ CASES = [
     ("tube_4x_mild", Params(warmth=0.5, oversampling=4)),
     ("tube_2x_heavy", Params(warmth=0.9, oversampling=2)),
     ("tube_1x_heavy", Params(warmth=0.9, oversampling=1)),
+    ("tube_4x_parallel", Params(warmth=0.6, mix=0.5, oversampling=4)),
 ]
 
 
@@ -45,14 +46,24 @@ def make_input():
     return (x / np.max(np.abs(x)) * 10 ** (-3 / 20)).astype(np.float32)
 
 
+def write_if_changed(path, audio):
+    """Write only if the samples differ: the WAV writer stamps the time into the header, so
+    rewriting identical audio would show every golden file as changed in git."""
+    if path.exists():
+        old, _ = sf.read(path, dtype="float32", always_2d=True)
+        if old.shape == audio.T.shape and np.array_equal(old, audio.T):
+            return
+    sf.write(path, audio.T, FS, subtype="FLOAT")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     x = make_input()
-    sf.write(OUT / "input.wav", x.T, FS, subtype="FLOAT")
+    write_if_changed(OUT / "input.wav", x)
     manifest = {"sampleRate": FS, "input": "input.wav", "cases": []}
     for name, p in CASES:
         y = wrm1.process(x.astype(np.float64), FS, p).astype(np.float32)
-        sf.write(OUT / f"{name}.wav", y.T, FS, subtype="FLOAT")
+        write_if_changed(OUT / f"{name}.wav", y)
         manifest["cases"].append({
             "name": name, "file": f"{name}.wav",
             "settings": {"input": p.input_db, "warmth": p.warmth, "tone": p.tone, "body": p.body,

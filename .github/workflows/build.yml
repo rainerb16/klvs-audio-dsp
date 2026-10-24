@@ -8,6 +8,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only by default; only the release job may write (create the release).
+permissions:
+  contents: read
+
 # A newer push to the same branch cancels the older, still-running build.
 concurrency:
   group: build-${{ github.ref }}
@@ -16,6 +20,10 @@ concurrency:
 env:
   PLUGIN: WRM1
   PLUGINVAL_VERSION: v1.0.4
+  # SHA-256 of the pluginval release zips, pinned when first downloaded (2026-10-24). A changed
+  # download fails the build instead of running unknown code.
+  PLUGINVAL_SHA256_macOS: 3c4c533bda0c5059eea3ddaea752d757ee2025041f0f47e6bcb0e87f6082b29f
+  PLUGINVAL_SHA256_Windows: c08e61ce3b96db41636f8ec7e76f4c7e2c13ebdac7fa1b5a1f52b4f32ec715ab
 
 jobs:
   build:
@@ -56,6 +64,13 @@ jobs:
       - name: Engine tests
         run: ctest --test-dir build -C Release --output-on-failure
 
+      # This runner is Apple Silicon; run the same tests on the Intel half via Rosetta.
+      - name: Engine tests (Intel slice, Rosetta)
+        if: runner.os == 'macOS'
+        run: |
+          /usr/bin/pgrep -q oahd || sudo softwareupdate --install-rosetta --agree-to-license
+          arch -x86_64 build/tests/WRM1Tests_artefacts/Release/WRM1Tests
+
       - name: Locate plugins
         shell: bash
         run: |
@@ -71,7 +86,7 @@ jobs:
             archs=$(lipo -archs "$b/Contents/MacOS/$PLUGIN")
             echo "$b: $archs"
             [[ "$archs" == *x86_64* && "$archs" == *arm64* ]] || { echo "::error::$b is not universal"; exit 1; }
-            vtool -show-build "$b/Contents/MacOS/$PLUGIN" | grep minos
+            vtool -show-build "$b/Contents/MacOS/$PLUGIN" | grep -q "minos 11.0" || { echo "::error::$b minimum macOS is not 11.0"; exit 1; }
           done
 
       # Unsigned builds: an ad-hoc signature (no Apple account) is still required for
@@ -92,15 +107,6 @@ jobs:
           killall -9 AudioComponentRegistrar 2>/dev/null || true
           auval -a | grep -i rnra || true
           auval -strict -v aufx Wrm1 Rnra
-
-      # ---------------------------------------------------------------- both
-      - name: pluginval (strictest)
-        shell: bash
-        run: |
-          curl -sSL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/$PLUGINVAL_VERSION/pluginval_${RUNNER_OS}.zip"
-          7z x -y pluginval.zip > /dev/null
-          if [[ "$RUNNER_OS" == "macOS" ]]; then PV=pluginval.app/Contents/MacOS/pluginval; else PV=./pluginval.exe; fi
-          "$PV" --strictness-level 10 --verbose --validate "$VST3_PATH"
 
       # ---------------------------------------------------------------- package
       - name: Package (macOS)
@@ -127,11 +133,31 @@ jobs:
           echo "PKG=dist/$OUT.zip" >> "$GITHUB_ENV"
           echo "PKG_NAME=$OUT" >> "$GITHUB_ENV"
 
+      # Downloadable builds only come from pushes to this repo, never from pull requests
+      # (a fork's pull request must not produce a zip that looks like an official build).
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG }}
           retention-days: 30
+
+      # Runs after packaging, so the validator can't touch what gets shipped. A failure still
+      # fails the run, which blocks the release job.
+      - name: pluginval (strictest)
+        shell: bash
+        run: |
+          curl -sSfL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/$PLUGINVAL_VERSION/pluginval_${RUNNER_OS}.zip"
+          EXPECTED="PLUGINVAL_SHA256_${RUNNER_OS}"
+          ACTUAL=$( (sha256sum pluginval.zip 2>/dev/null || shasum -a 256 pluginval.zip) | cut -d' ' -f1)
+          [[ "$ACTUAL" == "${!EXPECTED}" ]] || { echo "::error::pluginval download hash mismatch ($ACTUAL)"; exit 1; }
+          7z x -y pluginval.zip > /dev/null
+          if [[ "$RUNNER_OS" == "macOS" ]]; then PV=pluginval.app/Contents/MacOS/pluginval; else PV=./pluginval.exe; fi
+          "$PV" --strictness-level 10 --verbose --validate "$VST3_PATH"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "--- Intel slice (Rosetta)"
+            arch -x86_64 "$PV" --strictness-level 10 --validate "$VST3_PATH"
+          fi
 
   # Pushing a tag like wrm1-v0.1.0 publishes both zips on the Releases page, where anyone can
   # download them without a GitHub account. Marked as a pre-release while builds are unsigned.
@@ -143,6 +169,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Only release commits that are already on main (not an unmerged branch).
+      - name: Check the tagged commit is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
 
       - name: Check tag matches plugins/WRM1/VERSION
         run: |

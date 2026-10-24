@@ -245,10 +245,10 @@ void Editor::updateScope()
         d.harmonicsDb[k] = (float) juce::Decibels::gainToDecibels (mags[k] / mags[0], -120.0);
 
     const auto dbText = [] (double v) {
-        return juce::String (juce::CharPointer_UTF8 (v < 0.0 ? "\xe2\x88\x92" : "+")) + juce::String (std::abs (v), 1) + " dB";
+        return juce::String (v < 0.0 ? "-" : "+") + juce::String (std::abs (v), 1) + " dB"; // same minus as the knobs
     };
     d.leftLabel = "2nd harmonic";
-    d.leftValue = juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (juce::roundToInt (std::abs (d.harmonicsDb[1]))) + " dB";
+    d.leftValue = "-" + juce::String (juce::roundToInt (std::abs (d.harmonicsDb[1]))) + " dB";
     d.rightLabel = "Auto Gain";
     d.rightValue = key[6] >= 0.5f ? dbText (autoGainDb (ch, driveDb, key[3], key[4], key[5])) : juce::String ("off");
     scope.setData (d);

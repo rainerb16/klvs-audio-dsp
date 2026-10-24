@@ -17,8 +17,8 @@ The examples use WRM1 version 0.1.0; swap in the version you downloaded.
 the newest WRM1 release and download `Rainr-WRM1-<version>-macOS.zip` or
 `Rainr-WRM1-<version>-Windows.zip`. No GitHub account needed.
 
-**Rainer (builds between releases):** repo → **Actions** → the newest green run → **Artifacts**
-at the bottom. This needs a GitHub login, and the download is a zip *inside* a zip: unzip twice.
+**Rainer (builds between releases):** repo → **Actions** → the newest green run **on the `main`
+branch** → **Artifacts** at the bottom. This needs a GitHub login, and the download is a zip *inside* a zip: unzip twice.
 
 ---
 
@@ -86,7 +86,8 @@ or "is damaged". The `xattr` line removes the quarantine tag from **these two fi
 1. **Before unzipping:** right-click the zip → **Properties** → tick **Unblock** (bottom of the
    General tab) → OK. This removes the "downloaded from the internet" mark from everything inside.
    If there's no Unblock box, Windows didn't mark it and you can skip this.
-2. Extract the zip. Inside is a folder `WRM1.vst3`.
+2. Extract the zip. You get a folder `Rainr-WRM1-0.1.0-Windows` containing a `WRM1.vst3` folder
+   and a `README.txt`.
 3. Copy the whole `WRM1.vst3` folder to `C:\Program Files\Common Files\VST3`
    (create the `VST3` folder if it doesn't exist). Windows asks for administrator permission:
    that's normal for this folder.
@@ -114,8 +115,10 @@ identical.
 
 ## 5. Updating and removing
 
-- **Update:** install the new version over the old one exactly as above, then Rescan in Live. Your
-  saved sets keep their WRM1 settings: parameter names never change between versions.
+- **Update:** quit Live first, remove the old version (below), then install the new one exactly as
+  above and Rescan. Copying over a plugin that's still in place, or still loaded in Live, can leave
+  a mix of old and new files and make macOS reject it. Your saved sets keep their WRM1 settings:
+  parameter names never change between versions.
 - **Remove (Mac):** delete `WRM1.vst3` from `~/Library/Audio/Plug-Ins/VST3` and `WRM1.component`
   from `~/Library/Audio/Plug-Ins/Components`.
 - **Remove (Windows):** delete `C:\Program Files\Common Files\VST3\WRM1.vst3`.

@@ -5,6 +5,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 
 #include "Engine.h"
+#include "WRM1ProcessorTests.h"
 
 namespace
 {
@@ -172,12 +173,70 @@ int main (int argc, char** argv)
         check (peak < 8.0f, juce::String::formatted ("output stays bounded while every control moves (peak %.2f)", peak));
     }
     {
+        // Mono must be exactly the left channel of the same input processed in stereo.
         wrm1::Settings s;
         juce::AudioBuffer<float> mono (1, input.getNumSamples());
         mono.copyFrom (0, 0, input, 0, 0, input.getNumSamples());
-        const auto out = render (mono, s, fs, 512);
-        check (out.getNumChannels() == 1 && std::isfinite (out.getSample (0, 1000)), "mono processing");
+        const auto monoOut = render (mono, s, fs, 512);
+        const auto stereoOut = render (input, s, fs, 512);
+        juce::AudioBuffer<float> left (1, input.getNumSamples());
+        left.copyFrom (0, 0, stereoOut, 0, 0, input.getNumSamples());
+        check (residualDb (monoOut, left, 0) < -120.0, "mono output equals the stereo left channel");
     }
+    {
+        // Hosts may call process before prepare: audio must pass through untouched (no hang).
+        wrm1::Engine engine;
+        engine.setSettings ({});
+        juce::AudioBuffer<float> buf (input);
+        engine.process (buf);
+        check (residualDb (buf, input, 0) < -200.0, "audio passes through untouched before prepare");
+    }
+    {
+        // Host bypass delays by exactly the reported latency (2x: an impulse comes out late by it).
+        wrm1::Engine engine;
+        engine.prepare (fs, 512, 2);
+        juce::AudioBuffer<float> buf (2, 512);
+        buf.clear();
+        buf.setSample (0, 10, 1.0f);
+        engine.processBypassed (buf);
+        const int latency = engine.getLatencySamples();
+        check (latency > 0 && juce::exactlyEqual (buf.getSample (0, 10 + latency), 1.0f) && juce::exactlyEqual (buf.getSample (0, 10), 0.0f),
+               juce::String::formatted ("bypass is delayed by the reported latency (%d samples)", latency));
+    }
+    {
+        // One NaN from upstream must not silence the bus for good.
+        wrm1::Engine engine;
+        engine.prepare (fs, 256, 2);
+        juce::AudioBuffer<float> buf (2, 256);
+        bool recovered = false;
+        for (int block = 0; block < 20; ++block)
+        {
+            for (int c = 0; c < 2; ++c)
+                buf.copyFrom (c, 0, input, c, block * 256, 256);
+            if (block == 3)
+                buf.setSample (0, 100, std::numeric_limits<float>::quiet_NaN());
+            engine.process (buf);
+            if (block == 19)
+                recovered = std::isfinite (buf.getSample (0, 255)) && buf.getMagnitude (0, 0, 256) > 1e-4f;
+        }
+        check (recovered, "recovers from a NaN in the input");
+    }
+    {
+        // Re-preparing at a new sample rate gives the same result as a fresh engine.
+        wrm1::Engine reused;
+        reused.prepare (44100.0, 512, 2);
+        juce::AudioBuffer<float> warmup (input);
+        reused.process (warmup);
+        reused.prepare (fs, 512, 2);
+        reused.setSettings ({});
+        reused.snapToTargets();
+        juce::AudioBuffer<float> a (input);
+        reused.process (a);
+        const auto b = render (input, {}, fs, 512);
+        check (residualDb (a, b, 0) < -120.0, "re-prepare at a new sample rate matches a fresh engine");
+    }
+
+    runProcessorTests (check);
 
     std::printf ("CPU (information only)\n");
     for (int os = 0; os < 3; ++os)

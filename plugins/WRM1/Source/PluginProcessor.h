@@ -6,7 +6,7 @@
 
 namespace wrm1
 {
-class Processor final : public juce::AudioProcessor
+class Processor final : public juce::AudioProcessor, private juce::Timer
 {
 public:
     Processor();
@@ -15,6 +15,7 @@ public:
     void releaseResources() override {}
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override;
+    void processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -47,6 +48,11 @@ private:
     Peaks inputPeak {}, outputPeak {};
 
     Settings readSettings() const noexcept;
+    void timerCallback() override;
+
+    // Latency changes (oversampling switches) happen on the audio thread but must be reported to
+    // the host from the message thread: the audio thread only publishes the new value here.
+    std::atomic<int> engineLatency { 0 };
 
     Engine engine;
 

@@ -159,8 +159,11 @@ These don't change the sound at static settings; they define behaviour while thi
 | Auto Gain | Computed per 16-sample sub-block from the smoothed values, then smoothed again over 50 ms (in dB) |
 | Auto Gain on/off | The Auto Gain target moves to 0 dB and follows the same 50 ms ramp |
 | Mix, Output | 20 ms linear ramp (Output as linear gain) |
-| Character change | 30 ms equal-gain crossfade between the old and new curve (both run during the fade); Tape emphasis gain ramps 0↔4 dB over the same 30 ms |
-| Oversampling change | Not automatable. Reset the oversampler, report the new latency to the host |
+| Character change | 30 ms equal-gain crossfade between the old and new curve (both run during the fade); Tape emphasis gain ramps 0↔4 dB over the same 30 ms. A change during a fade waits for that fade to finish (no jump) |
+| Oversampling change | Not automatable. Reset the oversampler; the new latency is reported to the host from the message thread (never from the audio thread) |
+| Host bypass | `processBlockBypassed` outputs the dry signal through the same latency delay, so bypassing never shifts the track in time |
+| Non-finite input | A NaN/Inf from upstream resets the filter, oversampler and delay states and mutes that block, instead of silencing the output for good |
+| Before `prepareToPlay` | Audio passes through untouched |
 | Dry path | Delayed by exactly the oversampler latency so Mix < 100 % doesn't comb-filter |
 | Latency | 0 samples at Off; at 2x/4x the oversampler's latency rounded **up** to a whole host sample by a whole-sample delay inside the oversampled section (JUCE's own integer-latency option is not used: its Thiran allpass delays highs more than lows). Measured at 48 kHz: 49 samples at 2x, 60 at 4x |
 | Oversampling filter | `juce::dsp::Oversampling`, FIR equiripple half-band, maximum quality: linear phase, like the Python model's `resample_poly` |

@@ -17,7 +17,6 @@ SegmentedControl::SegmentedControl (juce::RangedAudioParameter& parameter, const
 
 void SegmentedControl::select (int index)
 {
-    selected = index;
     for (int i = 0; i < segments.size(); ++i)
         segments[i]->setToggleState (i == index, juce::dontSendNotification);
     repaint();

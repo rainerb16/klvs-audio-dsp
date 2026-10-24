@@ -154,6 +154,23 @@
     "oversampling": 0
    },
    "maxResidualDb": -90.0
+  },
+  {
+   "name": "tube_4x_parallel",
+   "file": "tube_4x_parallel.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.6,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 0.5,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 2
+   },
+   "maxResidualDb": -50.0
   }
  ]
 }

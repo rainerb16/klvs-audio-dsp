@@ -47,8 +47,13 @@ public:
     /** Jump straight to the current settings with no smoothing (after prepare, and in tests). */
     void snapToTargets() noexcept;
 
-    /** Processes in place. Any block size; channels beyond maxChannels are left untouched. */
+    /** Processes in place. Any block size; channels beyond maxChannels are left untouched.
+        Before prepare() the audio passes through unchanged. */
     void process (juce::AudioBuffer<float>& buffer) noexcept;
+
+    /** Host bypass: the dry signal, delayed by the same latency as process(), so bypassing doesn't
+        shift the track in time. Shares the dry delay with process() so toggling is seamless. */
+    void processBypassed (juce::AudioBuffer<float>& buffer) noexcept;
 
     /** Oversampler latency; the dry path is delayed by the same amount. */
     int getLatencySamples() const noexcept { return latency; }
@@ -67,8 +72,13 @@ private:
     void processChunk (float* const* channels, int numChannels, int numSamples) noexcept;
     void saturate (juce::dsp::AudioBlock<float>& block) noexcept;
     void updateLatency() noexcept;
+    void resetState() noexcept;
+    void startPendingCharacterFade() noexcept;
     float autoGainTarget (const SubBlock& sb) const noexcept;
 
+    static constexpr int maxDryDelay = 1024;
+
+    bool prepared = false;
     double sampleRate = 48000.0;
     int maxBlock = 0, numCh = 2;
 
@@ -96,6 +106,7 @@ private:
     // Character crossfade
     std::array<rainr::dsp::BiasedCurve, 3> curves;
     int character = 1, previousCharacter = 1;
+    int requestedCharacter = 1; // a switch during a fade waits for the fade to finish (no jump)
     int fadeRemaining = 0, fadeLength = 1;
 
     Filter preLowProtect, preEmphasis, postEmphasis, postLowProtect, hfRolloff, toneLow, toneHigh, bodyBell;

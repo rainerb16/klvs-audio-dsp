@@ -30,9 +30,8 @@ def gain_needed(x, p):
 
 
 def main():
-    if wrm1.AUTOGAIN_TABLE_PATH.exists():
-        wrm1.AUTOGAIN_TABLE_PATH.unlink()
-        wrm1._table_cache = None
+    # gain_needed() runs with Auto Gain off, so the existing table isn't used here; it is only
+    # replaced once the new one is complete.
     if len(sys.argv) > 1:
         parts = []
         for path in sys.argv[1:]:
@@ -45,7 +44,7 @@ def main():
             s0 = int(np.argmax(e)) * (FS // 10)
             parts.append(set_lufs(y[:2, s0: s0 + 20 * FS], FS, REF_LUFS))
         x = np.concatenate(parts, axis=-1)
-        source = ", ".join(pathlib.Path(a).name for a in sys.argv[1:])
+        source = ", ".join(pathlib.Path(a).name for a in sys.argv[1:]) + " (loudest 20 s each)"
     else:
         x = set_lufs(pink_noise(FS * 15, FS), FS, REF_LUFS)
         source = "band-limited pink noise"

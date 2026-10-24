@@ -27,6 +27,13 @@ Processor::Processor()
     pAutoGain = state.getRawParameterValue (params::autoGain);
     pOutput = state.getRawParameterValue (params::output);
     pOversampling = state.getRawParameterValue (params::oversampling);
+    startTimerHz (10);
+}
+
+void Processor::timerCallback()
+{
+    if (const int l = engineLatency.load(); l != getLatencySamples())
+        setLatencySamples (l);
 }
 
 Settings Processor::readSettings() const noexcept
@@ -51,7 +58,8 @@ void Processor::prepareToPlay (double sampleRate, int maximumBlockSize)
     engine.prepare (sampleRate, maximumBlockSize, getTotalNumOutputChannels());
     engine.setSettings (readSettings());
     engine.snapToTargets();
-    setLatencySamples (engine.getLatencySamples());
+    engineLatency = engine.getLatencySamples();
+    setLatencySamples (engineLatency);
 }
 
 bool Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -74,9 +82,16 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
     engine.process (buffer);
     record (outputPeak, buffer);
 
-    // Oversampling changed: tell the host so it can re-align the track.
-    if (engine.getLatencySamples() != getLatencySamples())
-        setLatencySamples (engine.getLatencySamples());
+    engineLatency.store (engine.getLatencySamples(), std::memory_order_relaxed);
+}
+
+void Processor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+{
+    // Bypassed audio must keep the reported latency, or the host's delay compensation would shift
+    // this track early against the others (JUCE's default bypass assumes zero latency).
+    for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
+        buffer.clear (ch, 0, buffer.getNumSamples());
+    engine.processBypassed (buffer);
 }
 
 void Processor::record (Peaks& peaks, const juce::AudioBuffer<float>& buffer) noexcept
@@ -109,10 +124,25 @@ void Processor::getStateInformation (juce::MemoryBlock& destData)
 
 void Processor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // Unknown parameters are ignored and missing ones keep their defaults, so projects saved by
-    // older or newer versions still open.
-    if (auto xml = getXmlFromBinary (data, sizeInBytes); xml != nullptr && xml->hasTagName (state.state.getType()))
-        state.replaceState (juce::ValueTree::fromXml (*xml));
+    // Projects saved by older or newer versions must still open: unknown parameters are ignored,
+    // and parameters the project doesn't know about load at their defaults. (APVTS on its own
+    // would keep whatever value they currently have.) "PARAM"/"id"/"value" is APVTS's format.
+    auto xml = getXmlFromBinary (data, sizeInBytes);
+    if (xml == nullptr || ! xml->hasTagName (state.state.getType()))
+        return;
+
+    auto tree = juce::ValueTree::fromXml (*xml);
+    const int formatVersion = tree.getProperty ("stateFormatVersion", 1);
+    jassert (formatVersion <= stateFormatVersion); // newer format: load what we understand
+    juce::ignoreUnused (formatVersion);            // no migrations exist yet (format 1 only)
+
+    for (auto* p : getParameters())
+        if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
+            if (! tree.getChildWithProperty ("id", param->paramID).isValid())
+                tree.appendChild (juce::ValueTree ("PARAM", { { "id", param->paramID },
+                                                              { "value", param->convertFrom0to1 (param->getDefaultValue()) } }),
+                                  nullptr);
+    state.replaceState (tree);
 }
 } // namespace wrm1
 

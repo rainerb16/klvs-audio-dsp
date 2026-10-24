@@ -24,6 +24,5 @@ private:
 
     juce::OwnedArray<Segment> segments;
     juce::ParameterAttachment attachment;
-    int selected = 0;
 };
 } // namespace rainr::ui

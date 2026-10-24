@@ -9,6 +9,8 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 option(RAINR_UNIVERSAL "Build universal x86_64 + arm64 binaries on macOS" OFF)
 if(APPLE AND RAINR_UNIVERSAL)
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "" FORCE)
+elseif(APPLE AND CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64;arm64")
+    set(CMAKE_OSX_ARCHITECTURES "" CACHE STRING "" FORCE) # back to this machine's architecture
 endif()
 
 project(RainrAudio LANGUAGES C CXX)

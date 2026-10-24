@@ -9,5 +9,7 @@ Rainr Audio {PLUGIN} {VERSION} for Windows (test build)
    "Use VST3 Plug-in System Folders" > Rescan.
    Find it under Plug-Ins > Rainr Audio > {PLUGIN}.
 
+Updating: quit Live and delete the old {PLUGIN}.vst3 folder first, then copy the new one.
+
 Full instructions and troubleshooting:
 https://github.com/rainerb16/rainr-audio-dsp/blob/main/docs/INSTALL.md

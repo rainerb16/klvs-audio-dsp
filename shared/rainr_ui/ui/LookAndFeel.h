@@ -26,6 +26,9 @@ public:
     /** Letter-spaced monospaced caps label, as on the logo sheet. */
     static void drawCapsLabel (juce::Graphics&, const juce::String&, juce::Rectangle<float> area,
                                juce::Justification, float height = 11.0f, juce::Colour = colours::label);
+
+private:
+    juce::SharedResourcePointer<Typefaces> typefaces; // keeps the fonts loaded while this UI exists
 };
 
 /** Rotary knob preset: 270° travel, vertical/horizontal drag, double-click resets to default. */

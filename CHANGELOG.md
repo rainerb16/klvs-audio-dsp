@@ -13,3 +13,6 @@ One section per plugin, newest version first. Format: [Keep a Changelog](https:/
 - Plugin window: the Rainr Audio hardware look with the WRM1 lockup, large Warmth knob, Character
   and Oversampling switches, input/output meters, Auto Gain switch and a scope showing the
   saturation curve, harmonics and the Auto Gain amount. Double-click any knob to reset it.
+- Robustness (from a code review): bypassing in the host keeps the track in time with
+  oversampling on; a stray NaN from another plugin no longer mutes the bus; typed values such as
+  "50 %" or "Dark 30" are understood; older projects load new controls at their defaults.

@@ -26,8 +26,8 @@ at the bottom. This needs a GitHub login, and the download is a zip *inside* a z
 
 ### Install
 
-1. Double-click the zip in Downloads. You get a folder `Rainr-WRM1-0.1.0-macOS` with two items:
-   `WRM1.vst3` (VST3) and `WRM1.component` (Audio Unit).
+1. Double-click the zip in Downloads. You get a folder `Rainr-WRM1-0.1.0-macOS` with
+   `WRM1.vst3` (VST3), `WRM1.component` (Audio Unit) and a `README.txt`.
 2. Open **Terminal** (Applications → Utilities), paste this whole block and press Return:
 
    ```
@@ -36,11 +36,29 @@ at the bottom. This needs a GitHub login, and the download is a zip *inside* a z
    cp -R WRM1.vst3 ~/Library/Audio/Plug-Ins/VST3/
    cp -R WRM1.component ~/Library/Audio/Plug-Ins/Components/
    xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/WRM1.vst3 ~/Library/Audio/Plug-Ins/Components/WRM1.component
-   killall -9 AudioComponentRegistrar 2>/dev/null; echo done
+   killall -9 AudioComponentRegistrar 2>/dev/null
+   ls -d ~/Library/Audio/Plug-Ins/VST3/WRM1.vst3 ~/Library/Audio/Plug-Ins/Components/WRM1.component
    ```
 
    It copies the plugin into your own plugin folders (no admin password needed) and tells macOS
    these two files are OK to load. Nothing else on your Mac changes.
+
+3. **Check it worked:** the last line prints the two installed paths. If it says
+   "No such file or directory" instead, nothing was installed: usually the `cd` line didn't find
+   the folder (see the tip below).
+
+**Good to know**
+
+- **`~/Library` is the Library inside your home folder, not Macintosh HD → Library.** Your Mac
+  has two Library folders. The guide uses the one in your home folder, which Finder hides. To see
+  the installed plugin: in Finder press **Shift-Cmd-G** and enter `~/Library/Audio/Plug-Ins/VST3`.
+  Don't also put WRM1 in Macintosh HD → Library → Audio → Plug-Ins: two copies can confuse Live.
+- **The plugin is copied, not moved,** so the downloaded folder stays in Downloads. You can delete
+  it (and the zip) afterwards.
+- **Folder somewhere else?** If your download isn't directly in Downloads (or unzipped into a
+  folder with a different name), type `cd ` (with a space) in Terminal, drag the
+  `Rainr-WRM1-…-macOS` folder from Finder onto the Terminal window, press Return, then paste the
+  block again without its first line.
 
 ### Why the Terminal step, and is it safe?
 
@@ -55,8 +73,10 @@ or "is damaged". The `xattr` line removes the quarantine tag from **these two fi
 
 ### Prefer Finder? (manual way)
 
-1. In Finder: **Go → Go to Folder…** (Shift-Cmd-G), enter `~/Library/Audio/Plug-Ins/VST3` and drag
-   `WRM1.vst3` in. Do the same with `~/Library/Audio/Plug-Ins/Components` and `WRM1.component`.
+1. In Finder: **Go → Go to Folder…** (Shift-Cmd-G), enter `~/Library/Audio/Plug-Ins/VST3` (type
+   it exactly, including `~`) and drag `WRM1.vst3` in. Do the same with
+   `~/Library/Audio/Plug-Ins/Components` and `WRM1.component`. If a folder doesn't exist yet,
+   create it with that exact name.
 2. You still need the `xattr` line from the block above, run in Terminal.
 
 ---
@@ -107,6 +127,8 @@ identical.
 | What you see | Try |
 |---|---|
 | Mac: Live says WRM1 failed to load / is damaged | Run the `xattr` line from step 2 again, then Rescan |
+| Mac: the plugin isn't in Macintosh HD → Library → Audio → Plug-Ins | That's expected: it's in the Library in your home folder (see "Good to know") |
+| Mac: you also dragged WRM1 into Macintosh HD → Library → Audio → Plug-Ins | Remove that extra copy so Live only sees one: `rm -rf /Library/Audio/Plug-Ins/VST3/WRM1.vst3 /Library/Audio/Plug-Ins/Components/WRM1.component` |
 | WRM1 isn't in the Plug-Ins list | Check the plugin is in the folder above, the Live setting is on, then Option/Alt-click Rescan |
 | Only the VST3 or only the AU shows up | Turn on the other format in Live's Plug-Ins settings |
 | Clicks, crashes, or it sounds wrong | Tell Rainer (below) |

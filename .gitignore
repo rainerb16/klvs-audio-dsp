@@ -5,3 +5,4 @@ dsp-lab/renders/
 dsp-lab/test-audio/
 *.wav
 *.aif*
+build/

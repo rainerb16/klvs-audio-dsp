@@ -3,7 +3,7 @@
 Offline Python model of WRM1. `wrm1.py` is the reference the C++ plugin must match.
 
 ## Setup (once, no Homebrew)
-    cd ~/projects/klvs-audio/dsp-lab
+    cd ~/projects/rainr-audio/dsp-lab
     python3 -m venv .venv
     source .venv/bin/activate
     pip install -r requirements.txt

@@ -28,3 +28,7 @@ include(RainrPlugin)
 
 # One line per plugin.
 add_subdirectory(plugins/WRM1)
+
+# Engine tests against the Python reference (run with ctest).
+enable_testing()
+add_subdirectory(tests)

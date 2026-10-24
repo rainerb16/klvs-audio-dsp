@@ -1,0 +1,159 @@
+{
+ "sampleRate": 48000,
+ "input": "input.wav",
+ "cases": [
+  {
+   "name": "defaults_tube",
+   "file": "defaults_tube.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.4,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 0
+   },
+   "maxResidualDb": -90.0
+  },
+  {
+   "name": "tape_dark_full_protect",
+   "file": "tape_dark_full_protect.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.7,
+    "tone": -0.6,
+    "body": 0.8,
+    "character": 0,
+    "lowProtect": 1.0,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 0
+   },
+   "maxResidualDb": -90.0
+  },
+  {
+   "name": "console_hot_bright",
+   "file": "console_hot_bright.wav",
+   "settings": {
+    "input": 6.0,
+    "warmth": 1.0,
+    "tone": 0.8,
+    "body": 0.0,
+    "character": 2,
+    "lowProtect": 0.0,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 0
+   },
+   "maxResidualDb": -90.0
+  },
+  {
+   "name": "tube_parallel_no_autogain",
+   "file": "tube_parallel_no_autogain.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.6,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 0.5,
+    "autoGain": false,
+    "output": -3.0,
+    "oversampling": 0
+   },
+   "maxResidualDb": -90.0
+  },
+  {
+   "name": "tape_2x_parallel",
+   "file": "tape_2x_parallel.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.5,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 0,
+    "lowProtect": 0.5,
+    "mix": 0.6,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 1
+   },
+   "maxResidualDb": -50.0
+  },
+  {
+   "name": "tube_4x_heavy",
+   "file": "tube_4x_heavy.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.9,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 2
+   },
+   "maxResidualDb": -50.0
+  },
+  {
+   "name": "tube_4x_mild",
+   "file": "tube_4x_mild.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.5,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 2
+   },
+   "maxResidualDb": -50.0
+  },
+  {
+   "name": "tube_2x_heavy",
+   "file": "tube_2x_heavy.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.9,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 1
+   },
+   "maxResidualDb": -50.0
+  },
+  {
+   "name": "tube_1x_heavy",
+   "file": "tube_1x_heavy.wav",
+   "settings": {
+    "input": 0.0,
+    "warmth": 0.9,
+    "tone": 0.0,
+    "body": 0.3,
+    "character": 1,
+    "lowProtect": 0.5,
+    "mix": 1.0,
+    "autoGain": true,
+    "output": 0.0,
+    "oversampling": 0
+   },
+   "maxResidualDb": -90.0
+  }
+ ]
+}

@@ -6,3 +6,4 @@ dsp-lab/test-audio/
 *.wav
 *.aif*
 build/
+!tests/golden/*.wav

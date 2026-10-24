@@ -156,13 +156,14 @@ These don't change the sound at static settings; they define behaviour while thi
 |------|------|
 | Drive (`warmth`, `input`) | Smooth `drive_dB` with a 30 ms linear ramp, at the oversampled rate |
 | Filter gains (Low Protect, Tone, Body, HF rolloff, Tape emphasis) | Smooth the **dB values** over 30 ms; recompute biquad coefficients every 16 samples. Pre/post Low Protect and Tape emphasis pairs share one smoothed value |
-| Auto Gain | Computed from smoothed values, then smoothed again over 50 ms |
-| Mix, Output, Auto Gain on/off | 20 ms linear ramp of linear gain |
+| Auto Gain | Computed per 16-sample sub-block from the smoothed values, then smoothed again over 50 ms (in dB) |
+| Auto Gain on/off | The Auto Gain target moves to 0 dB and follows the same 50 ms ramp |
+| Mix, Output | 20 ms linear ramp (Output as linear gain) |
 | Character change | 30 ms equal-gain crossfade between the old and new curve (both run during the fade); Tape emphasis gain ramps 0↔4 dB over the same 30 ms |
 | Oversampling change | Not automatable. Reset the oversampler, report the new latency to the host |
 | Dry path | Delayed by exactly the oversampler latency so Mix < 100 % doesn't comb-filter |
-| Latency | 0 samples at Off; oversampler latency otherwise (**needs verification**: whether JUCE reports a fractional latency for its FIR half-band filters and how to round it) |
-| Oversampling filter | Linear-phase FIR half-band, to match the Python model (which uses linear-phase `resample_poly`) |
+| Latency | 0 samples at Off; at 2x/4x the oversampler's latency rounded **up** to a whole host sample by a whole-sample delay inside the oversampled section (JUCE's own integer-latency option is not used: its Thiran allpass delays highs more than lows). Measured at 48 kHz: 49 samples at 2x, 60 at 4x |
+| Oversampling filter | `juce::dsp::Oversampling`, FIR equiripple half-band, maximum quality: linear phase, like the Python model's `resample_poly` |
 | Memory | No allocation on the audio thread: size everything in `prepareToPlay` for the maximum block size and every OS factor |
 | Sample rate | Any; all coefficients derived from `fs`. Above ~96 kHz, 2x/4x are allowed but rarely needed |
 | Denormals | `juce::ScopedNoDenormals` in `processBlock` |
@@ -170,12 +171,23 @@ These don't change the sound at static settings; they define behaviour while thi
 Recommended UI default: 2x. Measured on a real mix at Warmth 100 %: aliasing/OS error vs 8x is
 -43.5 dB at 1x, -79 dB at 2x, -97 dB at 4x.
 
-### Matching the port to this spec (Phase 2)
+### Matching the port to this spec
 
-Python will export test signals plus expected outputs. The C++ unit test runs the same settings
-and compares:
-- at Oversampling Off: residual below -100 dB (same maths, float vs double);
-- at 2x/4x: residual below -60 dB (different, equally valid anti-alias filters).
+`dsp-lab/make_golden.py` writes test signals and the Python model's output for a set of settings
+to `tests/golden/`. `tests/WRM1EngineTests.cpp` runs the C++ engine on the same input, aligns by
+the reported latency and compares (run on every CI build). Limits and measured results:
+
+| Case | Limit | Measured |
+|------|-------|----------|
+| Oversampling Off (same maths, float vs double) | -90 dB | -142 to -145 dB |
+| 2x / 4x (different, equally valid anti-alias filters) | -50 dB | -61 to -68 dB |
+
+The same test checks zero latency at Off, identical output for any block size, stability with
+every control moving at once, and mono input. CPU on a 2017 15-inch MacBook Pro (Intel i7-7920HQ) at defaults:
+0.4 % of one core at Off, 1.3 % at 2x, 2.1 % at 4x.
+
+Whenever `wrm1.py` or `autogain_table.json` changes: run `calibrate.py` (if the sound changed),
+`export_cpp.py` (regenerates `plugins/WRM1/Source/AutoGainTable.h`) and `make_golden.py`.
 
 ---
 

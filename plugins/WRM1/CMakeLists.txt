@@ -8,4 +8,5 @@ rainr_add_plugin(WRM1
     VST3_CATEGORIES Fx Distortion
     SOURCES
         Source/PluginProcessor.cpp
-        Source/Parameters.cpp)
+        Source/Parameters.cpp
+        Source/Engine.cpp)

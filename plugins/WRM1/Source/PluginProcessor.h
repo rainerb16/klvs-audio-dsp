@@ -2,6 +2,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "Engine.h"
+
 namespace wrm1
 {
 class Processor final : public juce::AudioProcessor
@@ -34,6 +36,22 @@ public:
     juce::AudioProcessorValueTreeState state;
 
 private:
+    Settings readSettings() const noexcept;
+
+    Engine engine;
+
+    // Lock-free views of the parameter values, read on the audio thread.
+    std::atomic<float>* pInput = nullptr;
+    std::atomic<float>* pWarmth = nullptr;
+    std::atomic<float>* pTone = nullptr;
+    std::atomic<float>* pBody = nullptr;
+    std::atomic<float>* pCharacter = nullptr;
+    std::atomic<float>* pLowProtect = nullptr;
+    std::atomic<float>* pMix = nullptr;
+    std::atomic<float>* pAutoGain = nullptr;
+    std::atomic<float>* pOutput = nullptr;
+    std::atomic<float>* pOversampling = nullptr;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Processor)
 };
 } // namespace wrm1

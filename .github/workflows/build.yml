@@ -26,11 +26,11 @@ jobs:
           - name: macOS
             os: macos-14            # Apple Silicon runner; builds universal x86_64 + arm64
             configure: -DRAINR_UNIVERSAL=ON
-            targets: --target WRM1_VST3 --target WRM1_AU
+            targets: --target WRM1_VST3 --target WRM1_AU --target WRM1Tests
           - name: Windows
             os: windows-latest
             configure: ""
-            targets: --target WRM1_VST3
+            targets: --target WRM1_VST3 --target WRM1Tests
 
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +48,11 @@ jobs:
       - name: Build
         shell: bash
         run: cmake --build build --config Release --parallel 4 ${{ matrix.targets }}
+
+      # The C++ engine against the Python reference (tests/golden), plus latency, block-size and
+      # stability checks. Fails the build if the sound drifts from the spec.
+      - name: Engine tests
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Locate plugins
         shell: bash

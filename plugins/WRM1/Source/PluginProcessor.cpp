@@ -16,12 +16,41 @@ Processor::Processor()
                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       state (*this, nullptr, "WRM1", params::createLayout())
 {
+    pInput = state.getRawParameterValue (params::input);
+    pWarmth = state.getRawParameterValue (params::warmth);
+    pTone = state.getRawParameterValue (params::tone);
+    pBody = state.getRawParameterValue (params::body);
+    pCharacter = state.getRawParameterValue (params::character);
+    pLowProtect = state.getRawParameterValue (params::lowProtect);
+    pMix = state.getRawParameterValue (params::mix);
+    pAutoGain = state.getRawParameterValue (params::autoGain);
+    pOutput = state.getRawParameterValue (params::output);
+    pOversampling = state.getRawParameterValue (params::oversampling);
 }
 
-void Processor::prepareToPlay (double, int)
+Settings Processor::readSettings() const noexcept
 {
-    // Phase 2 step 3: size every buffer, smoother and oversampler here, never in processBlock.
-    setLatencySamples (0);
+    Settings s;
+    s.inputDb = pInput->load();
+    s.warmth = pWarmth->load();
+    s.tone = pTone->load();
+    s.body = pBody->load();
+    s.character = juce::roundToInt (pCharacter->load());
+    s.lowProtect = pLowProtect->load();
+    s.mix = pMix->load();
+    s.autoGain = pAutoGain->load() >= 0.5f;
+    s.outputDb = pOutput->load();
+    s.oversampling = juce::roundToInt (pOversampling->load());
+    return s;
+}
+
+void Processor::prepareToPlay (double sampleRate, int maximumBlockSize)
+{
+    // Everything that allocates happens here, never in processBlock.
+    engine.prepare (sampleRate, maximumBlockSize, getTotalNumOutputChannels());
+    engine.setSettings (readSettings());
+    engine.snapToTargets();
+    setLatencySamples (engine.getLatencySamples());
 }
 
 bool Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -36,9 +65,15 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
 {
     juce::ScopedNoDenormals noDenormals;
 
-    // Step 1: clean pass-through. The WRM1 chain is ported in Phase 2 step 3.
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
+
+    engine.setSettings (readSettings());
+    engine.process (buffer);
+
+    // Oversampling changed: tell the host so it can re-align the track.
+    if (engine.getLatencySamples() != getLatencySamples())
+        setLatencySamples (engine.getLatencySamples());
 }
 
 juce::AudioProcessorEditor* Processor::createEditor()

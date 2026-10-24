@@ -18,9 +18,7 @@ END_JUCE_MODULE_DECLARATION
 
 #include <juce_dsp/juce_dsp.h>
 
-// Filled in Phase 2 step 3 (DSP port of docs/WRM1_DSP.md):
-// saturation curves, RBJ biquads, DC blocker, parameter smoothing, auto gain table lookup,
-// oversampling wrapper. Nothing in this module may allocate on the audio thread.
-namespace rainr::dsp
-{
-}
+// Building blocks shared by Rainr Audio plugins. Nothing here allocates; everything is safe to
+// call on the audio thread once constructed.
+#include "dsp/Biquad.h"
+#include "dsp/Saturation.h"

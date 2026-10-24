@@ -35,7 +35,17 @@ public:
 
     juce::AudioProcessorValueTreeState state;
 
+    /** Peak levels since the last call, for the meters (read and reset by the editor). */
+    std::array<float, 2> takeInputPeaks() noexcept { return take (inputPeak); }
+    std::array<float, 2> takeOutputPeaks() noexcept { return take (outputPeak); }
+
 private:
+    using Peaks = std::array<std::atomic<float>, 2>;
+    static std::array<float, 2> take (Peaks& p) noexcept { return { p[0].exchange (0.0f), p[1].exchange (0.0f) }; }
+    static void record (Peaks& p, const juce::AudioBuffer<float>& b) noexcept;
+
+    Peaks inputPeak {}, outputPeak {};
+
     Settings readSettings() const noexcept;
 
     Engine engine;

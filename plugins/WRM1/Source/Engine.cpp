@@ -32,7 +32,6 @@ namespace
     constexpr double autoGainRampSeconds = 0.050, mixRampSeconds = 0.020;
     constexpr int subBlockSize = 16;
 
-    double driveDbFor (const Settings& s) { return driveMinDb + (driveMaxDb - driveMinDb) * s.warmth + s.inputDb; }
 
     double interpRow (const double* row, double driveDb)
     {
@@ -43,6 +42,19 @@ namespace
         return row[i] * (1.0 - t) + row[i + 1] * t;
     }
 } // namespace
+
+double driveDbFor (float warmth, float inputDb) noexcept
+{
+    return driveMinDb + (driveMaxDb - driveMinDb) * warmth + inputDb;
+}
+
+double transferCurve (int character, double driveDb, double x) noexcept
+{
+    const auto& spec = characters[std::clamp (character, 0, 2)];
+    const rainr::dsp::BiasedCurve curve (spec.shape, spec.bias);
+    const double g = std::pow (10.0, driveDb / 20.0);
+    return curve (g * x) / g;
+}
 
 double autoGainDb (int character, double driveDb, double lowProtect, double body, double tone) noexcept
 {
@@ -126,7 +138,7 @@ void Engine::setSettings (const Settings& s) noexcept
     target = s;
     const int ch = std::clamp (s.character, 0, 2);
     const auto& spec = characters[ch];
-    const auto drive = (float) driveDbFor (s);
+    const auto drive = (float) driveDbFor (s.warmth, s.inputDb);
 
     if (const int os = std::clamp (s.oversampling, 0, 2); os != osIndex)
     {

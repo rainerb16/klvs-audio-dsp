@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "Parameters.h"
+#include "PluginEditor.h"
 
 namespace wrm1
 {
@@ -68,18 +69,33 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
 
+    record (inputPeak, buffer);
     engine.setSettings (readSettings());
     engine.process (buffer);
+    record (outputPeak, buffer);
 
     // Oversampling changed: tell the host so it can re-align the track.
     if (engine.getLatencySamples() != getLatencySamples())
         setLatencySamples (engine.getLatencySamples());
 }
 
+void Processor::record (Peaks& peaks, const juce::AudioBuffer<float>& buffer) noexcept
+{
+    // Keep the highest peak until the editor collects it; a mono signal shows on both meters.
+    for (int c = 0; c < 2; ++c)
+    {
+        const int src = std::min (c, buffer.getNumChannels() - 1);
+        const float level = src >= 0 ? buffer.getMagnitude (src, 0, buffer.getNumSamples()) : 0.0f;
+        float prev = peaks[(size_t) c].load (std::memory_order_relaxed);
+        while (level > prev && ! peaks[(size_t) c].compare_exchange_weak (prev, level, std::memory_order_relaxed))
+        {
+        }
+    }
+}
+
 juce::AudioProcessorEditor* Processor::createEditor()
 {
-    // Placeholder until the real UI (Phase 2 step 4): JUCE's stock editor lists every parameter.
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new Editor (*this);
 }
 
 void Processor::getStateInformation (juce::MemoryBlock& destData)

@@ -6,6 +6,8 @@ Audio plugins by Rainr Audio, built with [JUCE](https://juce.com).
 |--------|--------------|--------|
 | WRM1 | Mix-bus warmth saturator | in development |
 
+![WRM1](docs/images/wrm1.png)
+
 ## Building on a Mac
 
 Requires Xcode (command-line use is enough) and CMake 3.22+.
@@ -17,7 +19,8 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target WRM1_VST3 WRM1_AU -j8
 ```
 
-Plugins land in `build/plugins/WRM1/WRM1_artefacts/Release/`. Local builds are for the Mac you
+Plugins land in `build/plugins/WRM1/WRM1_artefacts/Release/`. To check the UI without a DAW,
+build `WRM1Snapshot` and run `build/tools/WRM1Snapshot_artefacts/Release/WRM1Snapshot out.png warmth=0.7`. Local builds are for the Mac you
 are on; add `-DRAINR_UNIVERSAL=ON` for Intel + Apple Silicon.
 
 ## Docs

@@ -24,6 +24,10 @@ add_subdirectory(JUCE)
 juce_add_module(shared/rainr_dsp)
 juce_add_module(shared/rainr_ui)
 
+# Brand fonts for rainr_ui (IBM Plex, SIL Open Font License: shared/rainr_ui/assets/fonts/OFL.txt).
+file(GLOB RAINR_UI_FONTS CONFIGURE_DEPENDS shared/rainr_ui/assets/fonts/*.ttf)
+juce_add_binary_data(RainrUiFonts HEADER_NAME RainrUiFonts.h NAMESPACE RainrUiFonts SOURCES ${RAINR_UI_FONTS})
+
 include(RainrPlugin)
 
 # One line per plugin.
@@ -32,3 +36,6 @@ add_subdirectory(plugins/WRM1)
 # Engine tests against the Python reference (run with ctest).
 enable_testing()
 add_subdirectory(tests)
+
+# Development helpers (not shipped).
+add_subdirectory(tools)

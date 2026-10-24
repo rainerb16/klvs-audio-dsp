@@ -6,7 +6,8 @@
 #       BUNDLE_ID    <com.rainraudio.xxx>                        # PERMANENT
 #       VERSION      <x.y.z>
 #       VST3_CATEGORIES <...>
-#       SOURCES      <files...>)
+#       SOURCES      <files...>
+#       ASSETS       <images...>)                               # -> <target>Assets.h, namespace <target>Assets
 
 # ----------------------------------------------------------------------------------------------
 #  PERMANENT IDENTIFIERS. Hosts identify a plugin by manufacturer code + plugin code (AU) and by
@@ -17,7 +18,7 @@ set(RAINR_COMPANY_NAME "Rainr Audio")
 set(RAINR_MANUFACTURER_CODE "Rnra")
 
 function(rainr_add_plugin target)
-    cmake_parse_arguments(ARG "" "PRODUCT_NAME;PLUGIN_CODE;BUNDLE_ID;VERSION" "VST3_CATEGORIES;SOURCES" ${ARGN})
+    cmake_parse_arguments(ARG "" "PRODUCT_NAME;PLUGIN_CODE;BUNDLE_ID;VERSION" "VST3_CATEGORIES;SOURCES;ASSETS" ${ARGN})
 
     juce_add_plugin(${target}
         VERSION "${ARG_VERSION}"
@@ -38,6 +39,11 @@ function(rainr_add_plugin target)
 
     target_sources(${target} PRIVATE ${ARG_SOURCES})
 
+    if(ARG_ASSETS)
+        juce_add_binary_data(${target}Assets HEADER_NAME ${target}Assets.h NAMESPACE ${target}Assets SOURCES ${ARG_ASSETS})
+        target_link_libraries(${target} PRIVATE ${target}Assets)
+    endif()
+
     target_compile_definitions(${target}
         PUBLIC
             JUCE_WEB_BROWSER=0
@@ -49,6 +55,7 @@ function(rainr_add_plugin target)
         PRIVATE
             rainr_dsp
             rainr_ui
+            RainrUiFonts
             juce::juce_audio_utils
             juce::juce_dsp
         PUBLIC

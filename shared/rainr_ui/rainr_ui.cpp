@@ -1,14 +1,9 @@
 #include "rainr_ui.h"
 
-namespace rainr::ui
-{
-LookAndFeel::LookAndFeel()
-{
-    using namespace colours;
-    setColourScheme ({ background, panel, background, border, text, red, text, red, text });
-    setColour (juce::ResizableWindow::backgroundColourId, background);
-    setColour (juce::Slider::thumbColourId, red);
-    setColour (juce::Slider::trackColourId, grey);
-    setColour (juce::Slider::backgroundColourId, border);
-}
-} // namespace rainr::ui
+#include <RainrUiFonts.h>
+
+#include "ui/Fonts.cpp"
+#include "ui/LookAndFeel.cpp"
+#include "ui/LevelMeter.cpp"
+#include "ui/SegmentedControl.cpp"
+#include "ui/TransferScope.cpp"

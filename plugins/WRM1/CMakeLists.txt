@@ -9,4 +9,7 @@ rainr_add_plugin(WRM1
     SOURCES
         Source/PluginProcessor.cpp
         Source/Parameters.cpp
-        Source/Engine.cpp)
+        Source/Engine.cpp
+        Source/PluginEditor.cpp
+    ASSETS
+        Assets/lockup.png)

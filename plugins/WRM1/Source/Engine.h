@@ -23,6 +23,12 @@ struct Settings
 /** Auto Gain in dB (docs/WRM1_DSP.md 2.9). */
 double autoGainDb (int character, double driveDb, double lowProtect, double body, double tone) noexcept;
 
+/** Drive in dB for Warmth and Input (docs/WRM1_DSP.md 2.1). */
+double driveDbFor (float warmth, float inputDb) noexcept;
+
+/** The static transfer curve, curve(g x) / g, for displays (docs/WRM1_DSP.md 2.1-2.2). */
+double transferCurve (int character, double driveDb, double x) noexcept;
+
 /** The WRM1 signal chain (docs/WRM1_DSP.md). Kept apart from the AudioProcessor so the tests can
     run it directly.
 

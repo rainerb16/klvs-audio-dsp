@@ -9,8 +9,11 @@ so that the next plugin is quick to start.
 JUCE/                 JUCE framework, git submodule pinned to a release tag
 cmake/RainrPlugin.cmake   rainr_add_plugin(): company-wide plugin settings
 shared/rainr_dsp/     DSP shared by all plugins (JUCE module)
-shared/rainr_ui/      Brand look: colours, fonts, knobs, meters (JUCE module)
+shared/rainr_ui/      Brand look: colours, fonts, knobs, meters, scope (JUCE module)
+                      assets/fonts: IBM Plex, SIL Open Font License (OFL.txt ships with it)
 plugins/<CODE>/       One folder per plugin: Source/, VERSION, CMakeLists.txt
+tests/                C++ engine tests against the Python reference (golden files)
+tools/                Development helpers, e.g. WRM1Snapshot (renders the UI to a PNG)
 dsp-lab/              Python reference models and listening tools
 docs/                 Specs (<CODE>_DSP.md) and this file
 CHANGELOG.md          One section per plugin
@@ -18,7 +21,8 @@ CHANGELOG.md          One section per plugin
 
 Adding a plugin: create `plugins/<CODE>/`, call `rainr_add_plugin()` from its
 `CMakeLists.txt`, add `add_subdirectory(plugins/<CODE>)` to the top-level `CMakeLists.txt`, and
-register its codes below.
+register its codes below. Product images (logo lockups) go in `plugins/<CODE>/Assets/` and are
+passed as `ASSETS`; they are embedded and readable as `<CODE>Assets::<file>_png`.
 
 ## Permanent identifiers
 

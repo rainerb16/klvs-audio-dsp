@@ -1,0 +1,125 @@
+name: Build
+
+on:
+  push:
+    paths-ignore: ["**.md", "dsp-lab/**", "docs/**"]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the older, still-running build.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLUGIN: WRM1
+  PLUGINVAL_VERSION: v1.0.4
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-14            # Apple Silicon runner; builds universal x86_64 + arm64
+            configure: -DRAINR_UNIVERSAL=ON
+            targets: --target WRM1_VST3 --target WRM1_AU
+          - name: Windows
+            os: windows-latest
+            configure: ""
+            targets: --target WRM1_VST3
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Read version
+        shell: bash
+        run: echo "VERSION=$(head -n1 plugins/$PLUGIN/VERSION | tr -d '\r')" >> "$GITHUB_ENV"
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.configure }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --parallel 4 ${{ matrix.targets }}
+
+      - name: Locate plugins
+        shell: bash
+        run: |
+          ART=build/plugins/$PLUGIN/${PLUGIN}_artefacts/Release
+          echo "VST3_PATH=$ART/VST3/$PLUGIN.vst3" >> "$GITHUB_ENV"
+          echo "AU_PATH=$ART/AU/$PLUGIN.component" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------- macOS
+      - name: Check architectures and minimum macOS
+        if: runner.os == 'macOS'
+        run: |
+          for b in "$VST3_PATH" "$AU_PATH"; do
+            archs=$(lipo -archs "$b/Contents/MacOS/$PLUGIN")
+            echo "$b: $archs"
+            [[ "$archs" == *x86_64* && "$archs" == *arm64* ]] || { echo "::error::$b is not universal"; exit 1; }
+            vtool -show-build "$b/Contents/MacOS/$PLUGIN" | grep minos
+          done
+
+      # Unsigned builds: an ad-hoc signature (no Apple account) is still required for
+      # Apple Silicon Macs to load the plugin. JUCE leaves the AU unsigned.
+      - name: Ad-hoc sign
+        if: runner.os == 'macOS'
+        run: |
+          for b in "$VST3_PATH" "$AU_PATH"; do
+            codesign --force --deep -s - "$b"
+            codesign --verify --deep --strict "$b"
+          done
+
+      - name: Apple AU validation (auval)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$AU_PATH" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -a | grep -i rnra || true
+          auval -strict -v aufx Wrm1 Rnra
+
+      # ---------------------------------------------------------------- both
+      - name: pluginval (strictest)
+        shell: bash
+        run: |
+          curl -sSL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/$PLUGINVAL_VERSION/pluginval_${RUNNER_OS}.zip"
+          7z x -y pluginval.zip > /dev/null
+          if [[ "$RUNNER_OS" == "macOS" ]]; then PV=pluginval.app/Contents/MacOS/pluginval; else PV=./pluginval.exe; fi
+          "$PV" --strictness-level 10 --verbose --validate "$VST3_PATH"
+
+      # ---------------------------------------------------------------- package
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          OUT="Rainr-$PLUGIN-$VERSION-macOS"
+          mkdir -p "dist/$OUT"
+          cp -R "$VST3_PATH" "$AU_PATH" "dist/$OUT/"
+          # ditto keeps the bundles' permissions and signatures intact (plain zip may not)
+          ditto -c -k --keepParent "dist/$OUT" "dist/$OUT.zip"
+          echo "PKG=dist/$OUT.zip" >> "$GITHUB_ENV"
+          echo "PKG_NAME=$OUT" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          OUT="Rainr-$PLUGIN-$VERSION-Windows"
+          mkdir -p "dist/$OUT"
+          cp -R "$VST3_PATH" "dist/$OUT/"
+          (cd dist && 7z a -tzip "$OUT.zip" "$OUT" > /dev/null)
+          echo "PKG=dist/$OUT.zip" >> "$GITHUB_ENV"
+          echo "PKG_NAME=$OUT" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG }}
+          retention-days: 30

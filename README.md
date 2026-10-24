@@ -8,6 +8,9 @@ Audio plugins by Rainr Audio, built with [JUCE](https://juce.com).
 
 ![WRM1](docs/images/wrm1.png)
 
+**Testing a build?** Download it from [Releases](https://github.com/rainerb16/rainr-audio-dsp/releases)
+and follow [docs/INSTALL.md](docs/INSTALL.md).
+
 ## Building on a Mac
 
 Requires Xcode (command-line use is enough) and CMake 3.22+.
@@ -25,6 +28,7 @@ are on; add `-DRAINR_UNIVERSAL=ON` for Intel + Apple Silicon.
 
 ## Docs
 
+- [docs/INSTALL.md](docs/INSTALL.md): installing test builds (Mac, Windows, Ableton)
 - [docs/WRM1_DSP.md](docs/WRM1_DSP.md): the WRM1 sound, specified
 - [docs/CONVENTIONS.md](docs/CONVENTIONS.md): IDs, versions, repo layout
 - [dsp-lab/README.md](dsp-lab/README.md): Python reference model and listening tools

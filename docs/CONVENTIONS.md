@@ -70,6 +70,17 @@ State is the parameter tree saved as XML with two extra properties: `stateFormat
 - Every version gets an entry in `CHANGELOG.md` under that plugin's heading, newest first,
   written for musicians (what changed in the sound or behaviour), not for programmers.
 
+## Releasing a test build
+
+1. Set the version in `plugins/<CODE>/VERSION` and move the changelog entry from
+   "Unreleased" to that version with today's date. Commit and push; wait for a green build.
+2. Tag and push: `git tag wrm1-v0.1.0 && git push origin wrm1-v0.1.0`.
+3. CI builds again, checks the tag matches `VERSION`, and publishes both zips as a pre-release on
+   the Releases page (downloadable without a GitHub account). Each zip contains a short
+   `README.txt`; the full guide is `docs/INSTALL.md`.
+
+Builds are unsigned until signing is set up, so releases stay marked as pre-releases.
+
 ## JUCE version
 
 JUCE is pinned to a release tag as a git submodule. Upgrading is a deliberate change: update the

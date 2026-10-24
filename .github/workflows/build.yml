@@ -2,6 +2,8 @@ name: Build
 
 on:
   push:
+    branches: ["**"]
+    tags: ["wrm1-v*"]   # a version tag also publishes a GitHub Release (see the release job)
     paths-ignore: ["**.md", "dsp-lab/**", "docs/**"]
   pull_request:
   workflow_dispatch:
@@ -107,6 +109,7 @@ jobs:
           OUT="Rainr-$PLUGIN-$VERSION-macOS"
           mkdir -p "dist/$OUT"
           cp -R "$VST3_PATH" "$AU_PATH" "dist/$OUT/"
+          sed "s/{PLUGIN}/$PLUGIN/g; s/{VERSION}/$VERSION/g" packaging/README-macOS.txt > "dist/$OUT/README.txt"
           # ditto keeps the bundles' permissions and signatures intact (plain zip may not)
           ditto -c -k --keepParent "dist/$OUT" "dist/$OUT.zip"
           echo "PKG=dist/$OUT.zip" >> "$GITHUB_ENV"
@@ -119,6 +122,7 @@ jobs:
           OUT="Rainr-$PLUGIN-$VERSION-Windows"
           mkdir -p "dist/$OUT"
           cp -R "$VST3_PATH" "dist/$OUT/"
+          sed "s/{PLUGIN}/$PLUGIN/g; s/{VERSION}/$VERSION/g" packaging/README-Windows.txt | sed 's/$/\r/' > "dist/$OUT/README.txt"
           (cd dist && 7z a -tzip "$OUT.zip" "$OUT" > /dev/null)
           echo "PKG=dist/$OUT.zip" >> "$GITHUB_ENV"
           echo "PKG_NAME=$OUT" >> "$GITHUB_ENV"
@@ -128,3 +132,38 @@ jobs:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG }}
           retention-days: 30
+
+  # Pushing a tag like wrm1-v0.1.0 publishes both zips on the Releases page, where anyone can
+  # download them without a GitHub account. Marked as a pre-release while builds are unsigned.
+  release:
+    if: startsWith(github.ref, 'refs/tags/wrm1-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches plugins/WRM1/VERSION
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#wrm1-v}"
+          FILE_VERSION="$(head -n1 plugins/WRM1/VERSION | tr -d '\r')"
+          [[ "$TAG_VERSION" == "$FILE_VERSION" ]] || { echo "::error::tag $GITHUB_REF_NAME but VERSION is $FILE_VERSION"; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#wrm1-v}"
+          cat > notes.md <<EOF
+          Test build of WRM1 $VERSION. Unsigned: follow the install steps in
+          [docs/INSTALL.md](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/INSTALL.md).
+          What changed: see [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/main/CHANGELOG.md).
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/*.zip --repo "$GITHUB_REPOSITORY" \
+            --title "WRM1 $VERSION (test build)" --notes-file notes.md --prerelease
